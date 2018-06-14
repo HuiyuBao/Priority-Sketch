@@ -1,5 +1,5 @@
-#ifndef _PRIORITYCM_H
-#define _PRIORITYCM_H
+#ifndef _STRANGEPCM_H
+#define _STRANGEPCM_H
 
 #include <algorithm>
 #include <cstring>
@@ -114,4 +114,3 @@ public:
   	}
 };
 #endif//_PriorityCM_H
-
