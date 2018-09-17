@@ -10,12 +10,12 @@
 #include <math.h>
 #include <vector>
 
-#include "PriorityBF.h"
-#include "CountingBF.h"
 #include "PriorityCM.h"
 #include "CMSketch.h"
 #include "PriorityCU.h"
 #include "CUSketch.h"
+#include "PriorityC.h"
+#include "CSketch.h"
 
 #define testcycles 10
 #define PRI_NUM 8
@@ -96,47 +96,19 @@ int main(int argc,char **argv)
 
     printf("\n*****************************************\n");
 
-    PriorityBF *prioritybf;
-    CountingBF *countingbf;
-
     PriorityCM *prioritycm;
     CMSketch *cmsketch;
 
     PriorityCU *prioritycu;
     CUSketch *cusketch;
 
+    PriorityC *priorityc;
+    CSketch *csketch;
+
 /**************************************insert**************************************/
 
     timespec time1,time2;
     long long resns;
-
-
-
-    clock_gettime(CLOCK_MONOTONIC, &time1);
-    for(int t=0;t<testcycles;t++)
-    {
-        prioritybf=new PriorityBF(w,PRI_NUM);
-        for(int i=0;i<package_num;i++)
-            prioritybf->Insert(insert[i].ss,insert[i].pri);
-    }
-    clock_gettime(CLOCK_MONOTONIC, &time2);
-
-    resns = (long long)(time2.tv_sec - time1.tv_sec) * 1000000000LL + (time2.tv_nsec - time1.tv_nsec);
-    double throughput_PBF = (double)1000.0 * testcycles * package_num / resns;
-    printf("throughput of PriorityBloomFilter (insert): %.6lf Mips\n", throughput_PBF);
-
-    clock_gettime(CLOCK_MONOTONIC, &time1);
-    for(int t=0;t<testcycles;t++)
-    {
-        countingbf=new CountingBF(w);
-        for(int i=0;i<package_num;i++)
-            countingbf->Insert(insert[i].ss);
-    }
-    clock_gettime(CLOCK_MONOTONIC, &time2);
-
-    resns = (long long)(time2.tv_sec - time1.tv_sec) * 1000000000LL + (time2.tv_nsec - time1.tv_nsec);
-    double throughput_CBF = (double)1000.0 * testcycles * package_num / resns;
-    printf("throughput of CountingBloomFilter (insert): %.6lf Mips\n\n", throughput_CBF);
 
 
 
@@ -199,6 +171,35 @@ int main(int argc,char **argv)
     printf("throughput of CUSketch (insert): %.6lf Mips\n\n", throughput_CU);
 
 
+
+
+    clock_gettime(CLOCK_MONOTONIC, &time1);
+    for(int t=0;t<testcycles;t++)
+    {
+        priorityc=new PriorityC(w/(LOW_HASH_NUM+PRI_NUM-1),PRI_NUM);
+        for(int i=0;i<package_num;i++)
+            priorityc->Insert(insert[i].ss,insert[i].pri);
+    }
+    clock_gettime(CLOCK_MONOTONIC, &time2);
+
+    resns = (long long)(time2.tv_sec - time1.tv_sec) * 1000000000LL + (time2.tv_nsec - time1.tv_nsec);
+    double throughput_PC = (double)1000.0 * testcycles * package_num / resns;
+    printf("throughput of PriorityCountSketch (insert): %.6lf Mips\n", throughput_PC);
+
+    clock_gettime(CLOCK_MONOTONIC, &time1);
+    for(int t=0;t<testcycles;t++)
+    {
+        csketch=new CSketch(w/LOW_HASH_NUM,LOW_HASH_NUM);
+        for(int i=0;i<package_num;i++)
+            csketch->Insert(insert[i].ss);
+    }
+    clock_gettime(CLOCK_MONOTONIC, &time2);
+
+    resns = (long long)(time2.tv_sec - time1.tv_sec) * 1000000000LL + (time2.tv_nsec - time1.tv_nsec);
+    double throughput_C = (double)1000.0 * testcycles * package_num / resns;
+    printf("throughput of CountSketch (insert): %.6lf Mips\n\n", throughput_C);
+
+
     printf("\n*****************************************\n");
 
 /***********************************query******************************************/
@@ -206,26 +207,6 @@ int main(int argc,char **argv)
     int res_tmp=0;
     int flow_num = unmp.size();
     int sum = 0;
-
-
-
-    clock_gettime(CLOCK_MONOTONIC, &time1);
-    for(int t=0;t<testcycles;t++)
-        for(int i=0;i<flow_num;i++)
-            res_tmp=prioritybf->Query(query[i].ss,query[i].pri);
-    clock_gettime(CLOCK_MONOTONIC, &time2);
-    resns = (long long)(time2.tv_sec - time1.tv_sec) * 1000000000LL + (time2.tv_nsec - time1.tv_nsec);
-    throughput_PBF = (double)1000.0 * testcycles * flow_num / resns;
-    printf("throughput of PriorityBloomFilter (query): %.6lf Mips\n", throughput_PBF);
-
-    clock_gettime(CLOCK_MONOTONIC, &time1);
-    for(int t=0;t<testcycles;t++)
-        for(int i=0;i<flow_num;i++)
-            res_tmp=countingbf->Query(query[i].ss);
-    clock_gettime(CLOCK_MONOTONIC, &time2);
-    resns = (long long)(time2.tv_sec - time1.tv_sec) * 1000000000LL + (time2.tv_nsec - time1.tv_nsec);
-    throughput_CBF = (double)1000.0 * testcycles * flow_num / resns;
-    printf("throughput of CountingBloomFilter (query): %.6lf Mips\n\n", throughput_CBF);
 
 
 
@@ -250,6 +231,7 @@ int main(int argc,char **argv)
 
 
 
+
     clock_gettime(CLOCK_MONOTONIC, &time1);
     for(int t=0;t<testcycles;t++)
         for(int i=0;i<flow_num;i++)
@@ -268,6 +250,26 @@ int main(int argc,char **argv)
     throughput_CU = (double)1000.0 * testcycles * flow_num / resns;
     printf("throughput of CUSketch (query): %.6lf Mips\n\n", throughput_CU);
 
+
+
+    clock_gettime(CLOCK_MONOTONIC, &time1);
+    for(int t=0;t<testcycles;t++)
+        for(int i=0;i<flow_num;i++)
+            res_tmp=priorityc->Query(query[i].ss,query[i].pri);
+    clock_gettime(CLOCK_MONOTONIC, &time2);
+    resns = (long long)(time2.tv_sec - time1.tv_sec) * 1000000000LL + (time2.tv_nsec - time1.tv_nsec);
+    throughput_PC = (double)1000.0 * testcycles * flow_num / resns;
+    printf("throughput of PriorityCountSketch (query): %.6lf Mips\n", throughput_PC);
+
+    clock_gettime(CLOCK_MONOTONIC, &time1);
+    for(int t=0;t<testcycles;t++)
+        for(int i=0;i<flow_num;i++)
+            res_tmp=csketch->Query(query[i].ss);
+    clock_gettime(CLOCK_MONOTONIC, &time2);
+    resns = (long long)(time2.tv_sec - time1.tv_sec) * 1000000000LL + (time2.tv_nsec - time1.tv_nsec);
+    throughput_C = (double)1000.0 * testcycles * flow_num / resns;
+    printf("throughput of CountSketch (query): %.6lf Mips\n\n", throughput_C);
+
     printf("\n*****************************************\n");
 
 /**********************************aae,are*****************************************/
@@ -275,29 +277,29 @@ int main(int argc,char **argv)
 
     char temp[500];
 
-    double re_pbf = 0.0, re_cbf = 0.0, re_pcm = 0.0, re_cm = 0.0;
+    double re_pc = 0.0, re_c = 0.0, re_pcm = 0.0, re_cm = 0.0;
     double re_pcu=0.0,re_cu=0.0;
-    double re_pbf_sum[PRI_NUM], re_cbf_sum[PRI_NUM], re_pcm_sum[PRI_NUM], re_cm_sum[PRI_NUM];
+    double re_pc_sum[PRI_NUM], re_c_sum[PRI_NUM], re_pcm_sum[PRI_NUM], re_cm_sum[PRI_NUM];
     double re_pcu_sum[PRI_NUM],re_cu_sum[PRI_NUM];
-    memset(re_pbf_sum,0,sizeof(re_pbf_sum));
-    memset(re_cbf_sum,0,sizeof(re_cbf_sum));
+    memset(re_pc_sum,0,sizeof(re_pc_sum));
+    memset(re_c_sum,0,sizeof(re_c_sum));
     memset(re_pcm_sum,0,sizeof(re_pcm_sum));
     memset(re_cm_sum,0,sizeof(re_cm_sum));
     memset(re_pcu_sum,0,sizeof(re_pcu_sum));
     memset(re_cu_sum,0,sizeof(re_cu_sum));
 
-    double ae_pbf = 0.0, ae_cbf = 0.0, ae_pcm=0.0,ae_cm=0.0;
+    double ae_pc = 0.0, ae_c = 0.0, ae_pcm=0.0,ae_cm=0.0;
     double ae_pcu=0.0,ae_cu=0.0;
-    double ae_pbf_sum[PRI_NUM], ae_cbf_sum[PRI_NUM],ae_pcm_sum[PRI_NUM],ae_cm_sum[PRI_NUM];
+    double ae_pc_sum[PRI_NUM], ae_c_sum[PRI_NUM],ae_pcm_sum[PRI_NUM],ae_cm_sum[PRI_NUM];
     double ae_pcu_sum[PRI_NUM],ae_cu_sum[PRI_NUM];
-    memset(ae_pbf_sum,0,sizeof(ae_pbf_sum));
-    memset(ae_cbf_sum,0,sizeof(ae_cbf_sum));
+    memset(ae_pc_sum,0,sizeof(ae_pc_sum));
+    memset(ae_c_sum,0,sizeof(ae_c_sum));
     memset(ae_pcm_sum,0,sizeof(ae_pcm_sum));
     memset(ae_cm_sum,0,sizeof(ae_cm_sum));
     memset(ae_pcu_sum,0,sizeof(ae_pcu_sum));
     memset(ae_cu_sum,0,sizeof(ae_cu_sum));
 
-    double val_pbf = 0.0, val_cbf = 0.0, val_pcm=0.0, val_cm=0.0, val_pcu=0.0, val_cu=0.0;
+    double val_pc = 0.0, val_c = 0.0, val_pcm=0.0, val_cm=0.0, val_pcu=0.0, val_cu=0.0;
 
     for(unordered_map<string, int>::iterator it = unmp.begin(); it != unmp.end(); it++)
     {
@@ -305,50 +307,50 @@ int main(int argc,char **argv)
         pri = ufpri[it->first];
         val = it->second;
 
-        val_pbf = prioritybf->Query(temp,pri);
-        val_cbf = countingbf->Query(temp);
+        val_pc = priorityc->Query(temp,pri);
+        val_c = csketch->Query(temp);
         val_pcm = prioritycm->Query(temp,pri);
         val_cm = cmsketch->Query(temp);
         val_pcu = prioritycu->Query(temp,pri);
         val_cu = cusketch->Query(temp);
 
 
-        re_pbf = fabs(val_pbf - val) / (val * 1.0);
-        re_cbf = fabs(val_cbf - val) / (val * 1.0);
+        re_pc = fabs(val_pc - val) / (val * 1.0);
+        re_c = fabs(val_c - val) / (val * 1.0);
         re_pcm = fabs(val_pcm - val) / (val * 1.0);
         re_cm = fabs(val_cm - val) / (val * 1.0);
         re_pcu = fabs(val_pcu - val) / (val * 1.0);
         re_cu = fabs(val_cu - val) / (val * 1.0);
 
-        ae_pbf = fabs(val_pbf - val);
-        ae_cbf = fabs(val_cbf - val);
+        ae_pc = fabs(val_pc - val);
+        ae_c = fabs(val_c - val);
         ae_pcm = fabs(val_pcm - val);
         ae_cm = fabs(val_cm - val);
         ae_pcu = fabs(val_pcu - val);
         ae_cu = fabs(val_cu - val);
 
 
-        /*re_pbf_sum += (pri*1.0)/PRI_NUM*re_pbf;
-        re_cbf_sum += (pri*1.0)/PRI_NUM*re_cbf;
+        /*re_pc_sum += (pri*1.0)/PRI_NUM*re_pc;
+        re_c_sum += (pri*1.0)/PRI_NUM*re_c;
 
-        ae_pbf_sum += (pri*1.0)/PRI_NUM*ae_pbf;
-        ae_cbf_sum += (pri*1.0)/PRI_NUM*ae_cbf;*/
+        ae_pc_sum += (pri*1.0)/PRI_NUM*ae_pc;
+        ae_c_sum += (pri*1.0)/PRI_NUM*ae_c;*/
 
-        /*re_pbf_sum += (pri+1.0)/PRI_NUM*re_pbf;
-        re_cbf_sum += (pri+1.0)/PRI_NUM*re_cbf;
+        /*re_pc_sum += (pri+1.0)/PRI_NUM*re_pc;
+        re_c_sum += (pri+1.0)/PRI_NUM*re_c;
 
-        ae_pbf_sum += (pri+1.0)/PRI_NUM*ae_pbf;
-        ae_cbf_sum += (pri+1.0)/PRI_NUM*ae_cbf;*/
+        ae_pc_sum += (pri+1.0)/PRI_NUM*ae_pc;
+        ae_c_sum += (pri+1.0)/PRI_NUM*ae_c;*/
 
-        re_pbf_sum[pri] += re_pbf;
-        re_cbf_sum[pri] += re_cbf;
+        re_pc_sum[pri] += re_pc;
+        re_c_sum[pri] += re_c;
         re_pcm_sum[pri] += re_pcm;
         re_cm_sum[pri] += re_cm;
         re_pcu_sum[pri] += re_pcu;
         re_cu_sum[pri] += re_cu;
 
-        ae_pbf_sum[pri] += ae_pbf;
-        ae_cbf_sum[pri] += ae_cbf;
+        ae_pc_sum[pri] += ae_pc;
+        ae_c_sum[pri] += ae_c;
         ae_pcm_sum[pri] += ae_pcm;
         ae_cm_sum[pri] += ae_cm;
         ae_pcu_sum[pri] += ae_pcu;
@@ -365,36 +367,39 @@ int main(int argc,char **argv)
     for(int i=0;i<PRI_NUM;i++)
     {
         printf("for the elements with a priority of %d\n",i);
-        printf("    aae_pbf = %lf\n",ae_pbf_sum[i] / b[i]);
-        printf("    aae_cbf = %lf\n\n",ae_cbf_sum[i] / b[i]);
 
         printf("    aae_pcm = %lf\n",ae_pcm_sum[i] / b[i]);
         printf("    aae_cm  = %lf\n\n",ae_cm_sum[i] / b[i]);
 
         printf("    aae_pcu = %lf\n",ae_pcu_sum[i] / b[i]);
         printf("    aae_cu  = %lf\n\n",ae_cu_sum[i] / b[i]);
+
+        printf("    aae_pc = %lf\n",ae_pc_sum[i] / b[i]);
+        printf("    aae_c = %lf\n\n",ae_c_sum[i] / b[i]);
     }
 
-    /*printf("aae_pbf = %lf\n", ae_pbf_sum / b);
-    printf("aae_cbf = %lf\n", ae_cbf_sum / b);*/
+    /*printf("aae_pc = %lf\n", ae_pc_sum / b);
+    printf("aae_c = %lf\n", ae_c_sum / b);*/
 
     printf("\n*****************************************\n");
 
     for(int i=0;i<PRI_NUM;i++)
     {
         printf("for the elements with a priority of %d\n",i);
-        printf("    are_pbf = %lf\n",re_pbf_sum[i] / b[i]);
-        printf("    are_cbf = %lf\n\n",re_cbf_sum[i] / b[i]);
 
         printf("    are_pcm = %lf\n",re_pcm_sum[i] / b[i]);
         printf("    are_cm  = %lf\n\n",re_cm_sum[i] / b[i]);
 
         printf("    are_pcu = %lf\n",re_pcu_sum[i] / b[i]);
         printf("    are_cu  = %lf\n\n",re_cu_sum[i] / b[i]);
+
+        printf("    are_pc = %lf\n",re_pc_sum[i] / b[i]);
+        printf("    are_c = %lf\n\n",re_c_sum[i] / b[i]);
+
     }
 
-    /*printf("are_pbf = %lf\n", re_pbf_sum / b);
-    printf("are_cbf = %lf\n", re_cbf_sum / b);*/
+    /*printf("are_pc = %lf\n", re_pc_sum / b);
+    printf("are_c = %lf\n", re_c_sum / b);*/
 
     printf("\n****************************************************\n");
     return 0;
